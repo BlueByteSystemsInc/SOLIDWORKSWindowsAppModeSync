@@ -11,11 +11,20 @@ namespace WindowsThemeSync
     [Guid("36EB446E-E8D2-4F2A-AE07-B45D8DD92694"), ComVisible(true)]
     public class WindowsThemeSyncAddIn : ISwAddin
     {
+        #region fields 
         public SldWorks SOLIDWORKS { get; private set; }
         public int SessionCookie { get; private set; }
         public static object AddInName { get; private set; } = "Windows 10 App Mode Sync - Blue Byte Systems Inc.";
         public static object AddInDescription { get; private set; } = "Syncs your SOLIDWORKS theme with Windows 10 default app mode.";
+        #endregion
 
+
+        /// <summary>
+        /// This method is called when the add-in is activated in SOLIDWORKS.
+        /// </summary>
+        /// <param name="ThisSW">The this sw.</param>
+        /// <param name="Cookie">The cookie.</param>
+        /// <returns></returns>
         public bool ConnectToSW(object ThisSW, int Cookie)
         {
             try
@@ -24,22 +33,31 @@ namespace WindowsThemeSync
                 SessionCookie = Cookie;
                 SOLIDWORKS.SetAddinCallbackInfo(0, this, SessionCookie);
 
+                // sync the existing theme from the Windows settings
                 RefreshTheme();
-                WindowsThemeManager.WindowsThemeChanged += WindowsThemeManager_OfficeThemeChanged;
+
+                // start watching for theme registry changes
+                WindowsThemeManager.WindowsThemeChanged += WindowsThemeManager_WindowsThemeChanged;
                 WindowsThemeManager.StartWatchingForThemeChanges();
 
                 return true;
             }
             catch (Exception e)
             {
+                // in case something goes wrong
+                // this might fail an older Windows OS
                 MessageBox.Show($"Message = {e.Message} Stacktrace: {e.StackTrace}");
 
-                // Todo: log ex
-                return false;
+                return false; 
             }
         }
 
-        private void WindowsThemeManager_OfficeThemeChanged(object sender, Theme_e e)
+        /// <summary>
+        /// Fired when the Windows default app mode value in the registry changes
+        /// </summary>
+        /// <param name="sender">The sender.</param>
+        /// <param name="e">The e.</param>
+        private void WindowsThemeManager_WindowsThemeChanged(object sender, Theme_e e)
         {
 
             var currentTheme = (swInterfaceBrightnessTheme_e)SOLIDWORKS.GetUserPreferenceIntegerValue((int)swUserPreferenceIntegerValue_e.swSystemColorsBackground);
@@ -61,6 +79,9 @@ namespace WindowsThemeSync
         }
 
 
+        /// <summary>
+        /// Refreshes the theme.
+        /// </summary>
         public void RefreshTheme()
         {
             var theme = WindowsThemeManager.GetWindowsTheme();
@@ -81,10 +102,17 @@ namespace WindowsThemeSync
                     break;
             }
         }
+
+        /// <summary>
+        /// Gets called when you deativate the add-in in SOLIDWORKS
+        /// </summary>
+        /// <returns></returns>
         public bool DisconnectFromSW()
         {
             try
             {
+                // stop watch for registry changes
+
                 WindowsThemeManager.StopWatchingForThemeChanges();
                 return true;
             }
@@ -95,6 +123,8 @@ namespace WindowsThemeSync
             }
         }
 
+
+        #region com registration
 
         [ComRegisterFunction]
         private static void RegisterAssembly(Type t)
@@ -137,5 +167,7 @@ namespace WindowsThemeSync
                 throw e;
             }
         }
+
+        #endregion
     }
 }

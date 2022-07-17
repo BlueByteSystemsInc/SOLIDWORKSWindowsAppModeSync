@@ -29,7 +29,7 @@ namespace WindowsThemeSync
 
         #region Private Properties
 
-        private static int OfficeVersion { get; set; }
+      
 
         #endregion
 
